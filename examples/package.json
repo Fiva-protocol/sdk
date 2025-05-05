@@ -10,7 +10,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@fiva/sdk": "file:fiva-sdk-0.0.4.tgz",
+    "@fiva/sdk": "^0.0.4",
     "@ton/core": "^0.60.1",
     "@ton/ton": "^15.2.1",
     "@tonconnect/sdk": "^3.1.0",

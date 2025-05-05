@@ -80,7 +80,7 @@ export class Pool implements Contract {
         };
     }
 
-    async getFeeEstimation(provider: ContractProvider, op: number): Promise<{ value: bigint; fwdValue: bigint }> {
+    async getFeesEstimation(provider: ContractProvider, op: number): Promise<{ value: bigint; fwdValue: bigint }> {
         const res = await provider.get('get_fee_estimation', [
             { type: 'int', value: BigInt(op) },
             { type: 'int', value: 0n },
@@ -156,7 +156,7 @@ export class Pool implements Contract {
 
     static addLiquidityMessage(receiverAddress: Address, minLpOut: bigint, queryId: number): Cell {
         return beginCell()
-            .storeUint(SYOp.add_liquidity, 32)
+            .storeUint(PoolOp.add_liquidity, 32)
             .storeUint(queryId, 64)
             .storeAddress(receiverAddress)
             .storeCoins(minLpOut)

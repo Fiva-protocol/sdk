@@ -14,7 +14,6 @@ export const SYOp = {
     redeem_and_unwrap: crc32('redeem_and_unwrap'),
     redeem_after_maturity_and_unwrap: crc32('redeem_after_maturity_and_unwrap'),
     wrap_and_add_liquidity: crc32('wrap_and_add_liquidity'),
-    add_liquidity: crc32('add_liquidity'),
     redeem_lp_and_unwrap: crc32('redeem_lp_and_unwrap'),
     claim_interest_and_unwrap: crc32('claim_interest_and_unwrap'),
 };

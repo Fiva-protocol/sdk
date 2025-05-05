@@ -1,8 +1,8 @@
-import { Address, OpenedContract } from '@ton/core';
+import { Address, ContractProvider, OpenedContract } from '@ton/core';
 import { ITonConnect } from '@tonconnect/sdk';
 import { JettonMaster, TonClient4 } from '@ton/ton';
 import { Pool, SYJettonMinter, YTJettonMinter, JettonWallet } from './contracts';
-import { SYOp } from './helpers/opcodes';
+import { PoolOp, SYOp } from './helpers/opcodes';
 import { getSender } from './helpers/tonconnect';
 
 const DEFAULT_TTL = 5 * 60 * 1000;
@@ -213,6 +213,39 @@ export class FivaClient {
         return pool.getExpectedSwapAmountOut(fromAddr!!, toAddr!!, amountIn);
     }
 
+    async getMintYtPtOut(syAmount: bigint): Promise<{ yt_amount: bigint; pt_amount: bigint }> {
+        const ytMinter = await this.getYtMinter();
+        return await ytMinter.getMintYtPtOut(syAmount);
+    }
+
+    async getClaimableInterest(): Promise<bigint> {
+        const ytWallet = await this.getUserYtWallet();
+        const ytMinter = await this.getYtMinter();
+
+        const ytAmount = await ytWallet.getJettonBalance();
+        const lastCollectedInterestIndex = await ytWallet.getLastCollectedInterestIndex();
+        const acquiredInterest = await ytWallet.getAcquiredAmount();
+
+        const { interest } = await ytMinter.getClaimableInterest(
+            ytAmount,
+            lastCollectedInterestIndex,
+            acquiredInterest,
+        );
+        return interest;
+    }
+
+    async getRedeemSyOutBeforeMaturity(ytAmount: bigint, ptAmount: bigint): Promise<bigint> {
+        const ytMinter = await this.getYtMinter();
+        const { sy_amount } = await ytMinter.getRedeemSyOutBeforeMaturity(ytAmount, ptAmount);
+        return sy_amount;
+    }
+
+    async getRedeemSyOutAfterMaturity(ptAmount: bigint): Promise<bigint> {
+        const ytMinter = await this.getYtMinter();
+        const { sy_amount } = await ytMinter.getRedeemSyOutAfterMaturity(ptAmount);
+        return sy_amount;
+    }
+
     async swapAssetForPt(
         amountToSwap: bigint,
         queryId: number = 0,
@@ -350,8 +383,8 @@ export class FivaClient {
         recipientAddress: Address = this.userAddress,
         ttl: number = DEFAULT_TTL,
     ) {
-        if (!this.contracts.ytMinter) await this.setYtMinterAddress();
-        if (!this.contracts.userPtWallet || !this.contracts.userYtWallet) await this.setUserAddresses();
+        await this.setYtMinterAddress();
+        await this.setUserAddresses();
 
         const fees = await this.getSyMinter().getFeesEstimation(SYOp.redeem_and_unwrap);
 
@@ -359,7 +392,7 @@ export class FivaClient {
             validUntil: Date.now() + ttl,
             messages: [
                 {
-                    address: this.contracts.userAssetWallet!!.toString(),
+                    address: this.contracts.userPtWallet!!.toString(),
                     amount: fees.value.toString(),
                     payload: JettonWallet.transferMessage(
                         ptAmount,
@@ -440,9 +473,9 @@ export class FivaClient {
         minLpOut: bigint = 0n,
         recipientAddress: Address = this.userAddress,
     ) {
-        if (!this.contracts.pool) await this.setPoolAddress();
+        const pool = await this.getPool();
 
-        const ptFees = await this.getSyMinter().getFeesEstimation(SYOp.add_liquidity);
+        const ptFees = await pool.getFeesEstimation(PoolOp.add_liquidity);
         const userPtWallet = await this.getUserPtWallet();
         await userPtWallet.sendAddLiquidity(
             getSender(this.connector),
@@ -464,11 +497,11 @@ export class FivaClient {
         recipientAddress: Address = this.userAddress,
         ttl: number = DEFAULT_TTL,
     ) {
-        if (!this.contracts.pool) await this.setPoolAddress();
         if (!this.contracts.userAssetWallet || !this.contracts.userPtWallet) await this.setUserAddresses();
 
         const assetFees = await this.getSyMinter().getFeesEstimation(SYOp.wrap_and_add_liquidity);
-        const ptFees = await this.getSyMinter().getFeesEstimation(SYOp.add_liquidity);
+        const pool = await this.getPool();
+        const ptFees = await pool.getFeesEstimation(PoolOp.add_liquidity);
 
         await this.connector.sendTransaction({
             validUntil: Date.now() + ttl,
@@ -481,7 +514,7 @@ export class FivaClient {
                         this.contracts.syMinter,
                         this.userAddress,
                         null,
-                        assetFees.value,
+                        assetFees.fwdValue,
                         Pool.wrapAndAddLiquidityMessage(recipientAddress, minLpOut),
                         queryId,
                     )
@@ -496,7 +529,7 @@ export class FivaClient {
                         this.contracts.pool!!,
                         this.userAddress,
                         null,
-                        ptFees.value,
+                        ptFees.fwdValue,
                         Pool.addLiquidityMessage(recipientAddress, minLpOut, queryId),
                         queryId,
                     )

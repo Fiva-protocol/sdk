@@ -31,6 +31,29 @@ export class JettonWallet implements Contract {
         };
     }
 
+    async getJettonBalance(provider: ContractProvider) {
+        const { balance } = await this.getWalletData(provider);
+        return balance;
+    }
+
+    async getLastCollectedInterestIndex(provider: ContractProvider) {
+        let state = await provider.getState();
+        if (state.state.type !== 'active') {
+            return 0n;
+        }
+        let res = await provider.get('get_last_collected_interest_index', []);
+        return res.stack.readBigNumber();
+    }
+
+    async getAcquiredAmount(provider: ContractProvider) {
+        let state = await provider.getState();
+        if (state.state.type !== 'active') {
+            return 0n;
+        }
+        let res = await provider.get('get_acquired_amount', []);
+        return res.stack.readBigNumber();
+    }
+
     static transferMessage(
         jetton_amount: bigint,
         to: Address,
