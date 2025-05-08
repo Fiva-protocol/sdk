@@ -1,7 +1,7 @@
 {
   "name": "@fiva/sdk",
   "description": "Typescript SDK to interact with the FIVA SCs",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "homepage": "https://app.thefiva.com",
   "repository": {
     "type": "git",
