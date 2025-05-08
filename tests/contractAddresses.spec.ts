@@ -79,7 +79,7 @@ describe('FIVA SCs addresses are properly calculated', () => {
     });
 
     it('Gas estimation returns valid data', async () => {
-        const { value, fwdValue } = await fivaClient.getGasEstimation(SYOp.wrap_and_swap_sy_for_pt);
+        const { value, fwdValue } = await fivaClient.getFeesEstimation(SYOp.wrap_and_swap_sy_for_pt);
 
         expect(value).toBeGreaterThanOrEqual(toNano(0.2));
         expect(fwdValue).toBeGreaterThanOrEqual(toNano(0.1));

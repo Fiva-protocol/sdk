@@ -1,16 +1,13 @@
 {
-  "name": "examples",
+  "name": "@fiva_sdk/examples",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "author": "FIVA",
+  "license": "MIT",
   "dependencies": {
-    "@fiva/sdk": "^0.0.4",
+    "@fiva/sdk": "^0.0.8",
     "@ton/core": "^0.60.1",
     "@ton/ton": "^15.2.1",
     "@tonconnect/sdk": "^3.1.0",
