@@ -1,0 +1,136 @@
+.fiva-demo {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 20px;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.fiva-index {
+    font-size: 24px;
+    font-weight: 500;
+    color: #333;
+    text-align: center;
+    padding: 20px;
+    border-radius: 8px;
+    background-color: #f5f5f5;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.buy-form,
+.sell-form {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.form-content {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.balance-asset {
+    font-size: 16px;
+    color: #666;
+    margin-bottom: 10px;
+}
+
+.input-group {
+    display: flex;
+    gap: 10px;
+}
+
+.amount-input {
+    flex: 1;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 16px;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.amount-input:focus {
+    border-color: #007bff;
+}
+
+.buy-button,
+.sell-button {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.buy-button {
+    background-color: #28a745;
+    color: white;
+}
+
+.buy-button:hover {
+    background-color: #218838;
+}
+
+.sell-button {
+    background-color: #dc3545;
+    color: white;
+}
+
+.sell-button:hover {
+    background-color: #c82333;
+}
+
+.buy-button:disabled,
+.sell-button:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+}
+
+.expected-out {
+    font-size: 14px;
+    color: #666;
+    margin-top: 8px;
+    padding: 8px;
+    background-color: #f8f9fa;
+    border-radius: 6px;
+    text-align: center;
+}
+
+.asset-selector {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 15px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.asset-selector label {
+    font-size: 16px;
+    color: #666;
+    font-weight: 500;
+}
+
+.asset-select {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 16px;
+    outline: none;
+    transition: border-color 0.2s;
+    background-color: #fff;
+    cursor: pointer;
+}
+
+.asset-select:focus {
+    border-color: #007bff;
+}
+
+.asset-select option {
+    padding: 8px;
+}
