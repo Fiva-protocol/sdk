@@ -1,9 +1,10 @@
-import { Address, ContractProvider, OpenedContract } from '@ton/core';
+import { Address, OpenedContract } from '@ton/core';
 import { ITonConnect } from '@tonconnect/sdk';
 import { JettonMaster, TonClient4 } from '@ton/ton';
 import { Pool, SYJettonMinter, YTJettonMinter, JettonWallet } from './contracts';
 import { PoolOp, SYOp } from './helpers/opcodes';
 import { getSender } from './helpers/tonconnect';
+import { withRetries } from './helpers/retry';
 
 const DEFAULT_TTL = 5 * 60 * 1000;
 
@@ -105,28 +106,29 @@ export class FivaClient {
 
     async getPoolBalances(): Promise<{ lp_amount: bigint; sy_amount: bigint; pt_amount: bigint }> {
         const pool = await this.getPool();
-        return await pool.getPoolBalances();
+        return await withRetries(pool.getPoolBalances);
     }
 
     async getExpectedLpOut(sy_amount: bigint, pt_amount: bigint): Promise<bigint> {
         const pool = await this.getPool();
-        return await pool.getLpOut(sy_amount, pt_amount);
+        return await withRetries(pool.getLpOut, sy_amount, pt_amount);
     }
 
     private async setYtMinterAddress() {
-        if (!this.contracts.ytMinter) this.contracts.ytMinter = await this.getSyMinter().getYTMinterAddress();
+        if (!this.contracts.ytMinter)
+            this.contracts.ytMinter = await withRetries(this.getSyMinter().getYTMinterAddress);
     }
 
     private async setPtMinterAddress() {
         if (!this.contracts.ptMinter) {
             const ytMinter = await this.getYtMinter();
-            const { ptMinterAddress } = await ytMinter.getJettonAddresses();
+            const { ptMinterAddress } = await withRetries(ytMinter.getJettonAddresses);
             this.contracts.ptMinter = ptMinterAddress;
         }
     }
 
     private async setPoolAddress() {
-        if (!this.contracts.pool) this.contracts.pool = await this.getSyMinter().getPoolAddress();
+        if (!this.contracts.pool) this.contracts.pool = await withRetries(this.getSyMinter().getPoolAddress);
     }
 
     private async setPoolWalletAddresses() {
@@ -137,37 +139,37 @@ export class FivaClient {
             syAddr: this.contracts.poolSyWallet,
             ptAddr: this.contracts.poolPtWallet,
             ytAddr: this.contracts.poolYtWallet,
-        } = await pool.getJettonAddresses());
+        } = await withRetries(pool.getJettonAddresses));
     }
 
     private async setUserAddresses() {
         if (!this.contracts.userAssetWallet) {
-            const syMinterAssetAddr = await this.getSyMinter().getUnderlyingAddress();
+            const syMinterAssetAddr = await withRetries(this.getSyMinter().getUnderlyingAddress);
             const syMinterAssetWallet = this.client.open(JettonWallet.createFromAddress(syMinterAssetAddr));
 
-            const { minterAddress: assetMinterAddr } = await syMinterAssetWallet.getWalletData();
+            const { minterAddress: assetMinterAddr } = await withRetries(syMinterAssetWallet.getWalletData);
             const assetMinter = this.client.open(JettonMaster.create(assetMinterAddr));
 
-            this.contracts.userAssetWallet = await assetMinter.getWalletAddress(this.userAddress);
+            this.contracts.userAssetWallet = await withRetries(assetMinter.getWalletAddress, this.userAddress);
         }
 
         if (!this.contracts.userSyWallet) {
-            this.contracts.userSyWallet = await this.getSyMinter().getWalletAddress(this.userAddress);
+            this.contracts.userSyWallet = await withRetries(this.getSyMinter().getWalletAddress, this.userAddress);
         }
 
         if (!this.contracts.userPtWallet) {
             const ptMinter = await this.getPtMinter();
-            this.contracts.userPtWallet = await ptMinter.getWalletAddress(this.userAddress);
+            this.contracts.userPtWallet = await withRetries(ptMinter.getWalletAddress, this.userAddress);
         }
 
         if (!this.contracts.userYtWallet) {
             const ytMinter = await this.getYtMinter();
-            this.contracts.userYtWallet = await ytMinter.getWalletAddress(this.userAddress);
+            this.contracts.userYtWallet = await withRetries(ytMinter.getWalletAddress, this.userAddress);
         }
 
         if (!this.contracts.userLpWallet) {
             const pool = await this.getPool();
-            this.contracts.userLpWallet = await pool.getLpWalletAddress(this.userAddress);
+            this.contracts.userLpWallet = await withRetries(pool.getLpWalletAddress, this.userAddress);
         }
     }
 
@@ -185,7 +187,7 @@ export class FivaClient {
     }
 
     async getMaxTotalSupply(): Promise<{ maxTotalSupply: bigint; totalSupply: bigint }> {
-        return await this.getSyMinter().getMaxTotalSupply();
+        return await withRetries(this.getSyMinter().getMaxTotalSupply);
     }
 
     async getIndex(): Promise<bigint | undefined> {
@@ -195,7 +197,7 @@ export class FivaClient {
     }
 
     async getFeesEstimation(op: number): Promise<{ value: bigint; fwdValue: bigint }> {
-        return await this.getSyMinter().getFeesEstimation(op);
+        return await withRetries(this.getSyMinter().getFeesEstimation, op);
     }
 
     async getExpectedSwapAmountOut(fromAsset: FivaAsset, toAsset: FivaAsset, amountIn: bigint): Promise<bigint> {
@@ -210,23 +212,24 @@ export class FivaClient {
         if (fromAsset in [FivaAsset.PT, FivaAsset.YT] && toAsset in [FivaAsset.PT, FivaAsset.YT])
             throw new Error('Swaps between PT and YT assets are not supported');
 
-        return pool.getExpectedSwapAmountOut(fromAddr!!, toAddr!!, amountIn);
+        return withRetries(pool.getExpectedSwapAmountOut, fromAddr!!, toAddr!!, amountIn);
     }
 
     async getMintYtPtOut(syAmount: bigint): Promise<{ yt_amount: bigint; pt_amount: bigint }> {
         const ytMinter = await this.getYtMinter();
-        return await ytMinter.getMintYtPtOut(syAmount);
+        return await withRetries(ytMinter.getMintYtPtOut, syAmount);
     }
 
     async getClaimableInterest(): Promise<bigint> {
         const ytWallet = await this.getUserYtWallet();
         const ytMinter = await this.getYtMinter();
 
-        const ytAmount = await ytWallet.getJettonBalance();
-        const lastCollectedInterestIndex = await ytWallet.getLastCollectedInterestIndex();
-        const acquiredInterest = await ytWallet.getAcquiredAmount();
+        const ytAmount = await withRetries(ytWallet.getJettonBalance);
+        const lastCollectedInterestIndex = await withRetries(ytWallet.getLastCollectedInterestIndex);
+        const acquiredInterest = await withRetries(ytWallet.getAcquiredAmount);
 
-        const { interest } = await ytMinter.getClaimableInterest(
+        const { interest } = await withRetries(
+            ytMinter.getClaimableInterest,
             ytAmount,
             lastCollectedInterestIndex,
             acquiredInterest,
@@ -236,13 +239,13 @@ export class FivaClient {
 
     async getRedeemSyOutBeforeMaturity(ytAmount: bigint, ptAmount: bigint): Promise<bigint> {
         const ytMinter = await this.getYtMinter();
-        const { sy_amount } = await ytMinter.getRedeemSyOutBeforeMaturity(ytAmount, ptAmount);
+        const { sy_amount } = await withRetries(ytMinter.getRedeemSyOutBeforeMaturity, ytAmount, ptAmount);
         return sy_amount;
     }
 
     async getRedeemSyOutAfterMaturity(ptAmount: bigint): Promise<bigint> {
         const ytMinter = await this.getYtMinter();
-        const { sy_amount } = await ytMinter.getRedeemSyOutAfterMaturity(ptAmount);
+        const { sy_amount } = await withRetries(ytMinter.getRedeemSyOutAfterMaturity, ptAmount);
         return sy_amount;
     }
 
