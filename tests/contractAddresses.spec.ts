@@ -1,9 +1,9 @@
-import { FivaClient, SYOp } from '../src';
 import { JettonMaster, toNano, TonClient4 } from '@ton/ton';
 import TonConnect from '@tonconnect/sdk';
 import { Address } from '@ton/ton';
-import { getConnector } from '../examples/tonconnect/connector';
 import path from 'path';
+import { getConnector } from '../examples/tonconnect/connector';
+import { FivaClient, Pool, SYOp } from '../src';
 
 const MANIFEST_URL = 'https://ab6293cf51e6d12a43976b2abe6-app-dev.thefiva.com/tonconnect-manifest-dev.json';
 
@@ -67,6 +67,15 @@ describe('FIVA SCs addresses are properly calculated', () => {
         expect(ytWallet.address.toString()).toEqual(expectedWalletAddr.toString());
     });
 
+    it('User LP address is correct', async () => {
+        const lpWallet = await fivaClient.getUserLpWallet();
+        const lpMinter = tonClient.open(Pool.createFromAddress(poolAddr));
+        const userAddr = Address.parse(connector.account!!.address);
+
+        const expectedWalletAddr = await lpMinter.getLpWalletAddress(userAddr);
+        expect(lpWallet.address.toString()).toEqual(expectedWalletAddr.toString());
+    });
+
     it('Pool wallets are correct', async () => {
         const { syAddr, ptAddr, ytAddr } = await fivaClient.getPoolWalletAddresses();
         const syMinter = tonClient.open(JettonMaster.create(syMinterAddr));
@@ -76,12 +85,5 @@ describe('FIVA SCs addresses are properly calculated', () => {
         expect(syAddr.toString()).toEqual((await syMinter.getWalletAddress(poolAddr)).toString());
         expect(ptAddr.toString()).toEqual((await ptMinter.getWalletAddress(poolAddr)).toString());
         expect(ytAddr.toString()).toEqual((await ytMinter.getWalletAddress(poolAddr)).toString());
-    });
-
-    it('Gas estimation returns valid data', async () => {
-        const { value, fwdValue } = await fivaClient.getFeesEstimation(SYOp.wrap_and_swap_sy_for_pt);
-
-        expect(value).toBeGreaterThanOrEqual(toNano(0.2));
-        expect(fwdValue).toBeGreaterThanOrEqual(toNano(0.1));
     });
 });

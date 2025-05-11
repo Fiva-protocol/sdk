@@ -2,16 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTonConnectUI } from '@tonconnect/ui-react';
 import { Address, TonClient4 } from '@ton/ton';
 import { FivaAsset, FivaClient } from '@fiva/sdk';
-import {
-    evaaUsdtToSy,
-    syToEvaaUsdt,
-    assetToSy,
-    syToAsset,
-    UsdtToUserRepr,
-    JettonToUserRepr,
-    UserReprToUsdt,
-    UserReprToJetton,
-} from '../../utils/converters';
+import { UsdtToUserRepr, JettonToUserRepr, UserReprToUsdt, UserReprToJetton } from '../../utils/converters';
 import './fivaDemo.css';
 
 const ASSETS = {
@@ -19,9 +10,6 @@ const ASSETS = {
         address: Address.parse('EQDi9blCcyT-k8iMpFMYY0t7mHVyiCB50ZsRgyUECJDuGvIl'),
         display_name: 'Evaa USDT (maturity 2025-06-01)',
         symbol: 'USDT',
-        precision: 1_000_000n,
-        convertToSy: evaaUsdtToSy,
-        convertFromSy: syToEvaaUsdt,
         toUserRepr: UsdtToUserRepr,
         fromUserRepr: UserReprToUsdt,
     },
@@ -29,9 +17,6 @@ const ASSETS = {
         address: Address.parse('EQA0Pobx0rXc7MlfXvUAZlC_U4MRGJ4FKGq79dHbBJ7RsuyB'),
         display_name: 'Storm USDT-SLP (maturity 2025-06-01)',
         symbol: 'Storm USD SLP',
-        precision: 1_000_000_000n,
-        convertToSy: assetToSy,
-        convertFromSy: syToAsset,
         toUserRepr: JettonToUserRepr,
         fromUserRepr: UserReprToJetton,
     },
@@ -39,9 +24,6 @@ const ASSETS = {
         address: Address.parse('EQB9nQdgwdaTXG6F7mDEErPuuJza6lmCfQjun-PXK3iJXm2h'),
         display_name: 'Storm TON-SLP (maturity 2025-06-01)',
         symbol: 'Storm TON SLP',
-        precision: 1_000_000_000n,
-        convertToSy: assetToSy,
-        convertFromSy: syToAsset,
         toUserRepr: JettonToUserRepr,
         fromUserRepr: UserReprToJetton,
     },
@@ -49,9 +31,6 @@ const ASSETS = {
         address: Address.parse('EQD5A2ygwSgAXXTqI-OkAOY72bXn8-mRgE9wOEFLKgu6ifbD'),
         display_name: 'Storm NOT-SLP (maturity 2025-06-01)',
         symbol: 'Storm NOT SLP',
-        precision: 1_000_000_000n,
-        convertToSy: assetToSy,
-        convertFromSy: syToAsset,
         toUserRepr: JettonToUserRepr,
         fromUserRepr: UserReprToJetton,
     },
@@ -61,7 +40,6 @@ const FivaDemo: React.FC = () => {
     const [tonConnectUI] = useTonConnectUI();
     const [fivaClient, setFivaClient] = useState<FivaClient | null>(null);
 
-    const [index, setIndex] = useState(0n);
     const [currentAsset, setCurrentAsset] = useState<keyof typeof ASSETS>('USDT_EVAA_SY');
     const [assetBalance, setAssetBalance] = useState<string>('');
     const [ptBalance, setPtBalance] = useState<string>('');
@@ -96,7 +74,6 @@ const FivaDemo: React.FC = () => {
         fivaClient.getUserPtWallet().then((w) => {
             w.getJettonBalance().then((b) => setPtBalance(JettonToUserRepr(b)));
         });
-        fivaClient.getIndex().then((i) => setIndex(i ?? 0n));
     }, [fivaClient, currentAsset]);
 
     const handleBuySubmit = (e: React.FormEvent) => {
@@ -104,7 +81,7 @@ const FivaDemo: React.FC = () => {
 
         if (fivaClient && buyAmount !== '') {
             const amount = ASSETS[currentAsset].fromUserRepr(buyAmount);
-            fivaClient.swapAssetForPt(amount, 123, (amount * 99n) / 100n);
+            fivaClient.swapAssetForPt(amount, Date.now(), (amount * 99n) / 100n);
         }
     };
 
@@ -113,28 +90,26 @@ const FivaDemo: React.FC = () => {
 
         if (fivaClient && sellAmount !== '') {
             const amount = UserReprToJetton(sellAmount);
-            fivaClient.swapPtForAsset(amount, 123, (amount * 99n) / 100n);
+            fivaClient.swapPtForAsset(amount, Date.now(), (amount * 99n) / 100n);
         }
     };
 
     const changeBuyAmount = (e: React.ChangeEvent<HTMLInputElement>) => {
         setBuyAmount(e.target.value);
-        if (fivaClient && e.target.value !== '' && index > 0n) {
-            const syAmount = ASSETS[currentAsset].convertToSy(BigInt(e.target.value), index);
+        if (fivaClient && e.target.value !== '') {
+            const assetAmount = ASSETS[currentAsset].fromUserRepr(e.target.value);
             fivaClient
-                .getExpectedSwapAmountOut(FivaAsset.SY, FivaAsset.PT, syAmount)
+                .getExpectedSwapAmountOut(FivaAsset.Underlying, FivaAsset.PT, assetAmount)
                 .then((out) => setExpectedBuyOut(out.toString()));
         }
     };
 
     const changeSellAmount = (e: React.ChangeEvent<HTMLInputElement>) => {
         setSellAmount(e.target.value);
-        if (fivaClient && e.target.value !== '' && index > 0n) {
+        if (fivaClient && e.target.value !== '') {
             const ptAmount = UserReprToJetton(e.target.value);
-            fivaClient.getExpectedSwapAmountOut(FivaAsset.PT, FivaAsset.SY, ptAmount).then((out) => {
-                const syOut = out.toString();
-                const assetOut = ASSETS[currentAsset].convertFromSy(BigInt(syOut), index);
-                setExpectedSellOut(assetOut.toString());
+            fivaClient.getExpectedSwapAmountOut(FivaAsset.PT, FivaAsset.Underlying, ptAmount).then((out) => {
+                setExpectedSellOut(out.toString());
             });
         }
     };

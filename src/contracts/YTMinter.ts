@@ -58,6 +58,11 @@ export class YTJettonMinter implements Contract {
         return res.stack.readBigNumber();
     }
 
+    async getMaturity(provider: ContractProvider) {
+        const res = await provider.get('get_maturity', []);
+        return res.stack.readBigNumber();
+    }
+
     async getMintYtPtOut(
         provider: ContractProvider,
         syAmount: bigint,

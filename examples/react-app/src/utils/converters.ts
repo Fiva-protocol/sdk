@@ -1,26 +1,5 @@
-const INDEX_PRECISION = 1_000_000n;
 const JETTON_PRECISION = 1_000_000_000n;
 const USDT_PRECISION = 1_000_000n;
-
-// Convert Evaa USDT to SY (intermediate FIVA asset)
-export const evaaUsdtToSy = (amount: bigint, index: bigint): bigint => {
-    return (amount * JETTON_PRECISION * INDEX_PRECISION) / index;
-};
-
-// Convert any other asset to SY
-export const assetToSy = (amount: bigint, index: bigint): bigint => {
-    return amount * JETTON_PRECISION;
-};
-
-// Convert SY to Evaa USDT back
-export const syToEvaaUsdt = (amount: bigint, index: bigint): bigint => {
-    return (amount * index) / INDEX_PRECISION / 1000n;
-};
-
-// Convert SY to any other asset
-export const syToAsset = (amount: bigint): bigint => {
-    return amount;
-};
 
 // Convert USDT to user representation
 export const UsdtToUserRepr = (amount: bigint): string => {

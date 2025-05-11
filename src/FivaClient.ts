@@ -7,6 +7,8 @@ import { getSender } from './helpers/tonconnect';
 import { withRetries } from './helpers/retry';
 
 const DEFAULT_TTL = 5 * 60 * 1000;
+const FIVA_PRECISION = 1_000_000_000n;
+const INDEX_PRECISION = 1_000_000n;
 
 interface FivaRouterOptions {
     connector: ITonConnect;
@@ -16,7 +18,6 @@ interface FivaRouterOptions {
 
 export enum FivaAsset {
     Underlying,
-    SY,
     PT,
     YT,
 }
@@ -109,9 +110,11 @@ export class FivaClient {
         return await withRetries(pool.getPoolBalances);
     }
 
-    async getExpectedLpOut(sy_amount: bigint, pt_amount: bigint): Promise<bigint> {
+    async getExpectedLpOut(underlyingAmount: bigint, ptAmount: bigint): Promise<bigint> {
         const pool = await this.getPool();
-        return await withRetries(pool.getLpOut, sy_amount, pt_amount);
+        const syAmount = await this.convertUnderlyingToSy(underlyingAmount);
+
+        return await withRetries(pool.getLpOut, syAmount, ptAmount);
     }
 
     private async setYtMinterAddress() {
@@ -175,7 +178,7 @@ export class FivaClient {
 
     private assetToPoolAddress(asset: FivaAsset): Address | undefined {
         switch (asset) {
-            case FivaAsset.SY:
+            case FivaAsset.Underlying:
                 return this.contracts.poolSyWallet;
             case FivaAsset.PT:
                 return this.contracts.poolPtWallet;
@@ -184,6 +187,30 @@ export class FivaClient {
             default:
                 return undefined;
         }
+    }
+
+    async convertSyToUnderlying(syAmount: bigint): Promise<bigint> {
+        const syMinter = this.getSyMinter();
+        const syIndex = await syMinter.getIndex();
+        const underlyingPrecision = await syMinter.getUnderlyingPrecision();
+
+        if (syIndex > 0) {
+            return (syAmount * syIndex * BigInt(Math.pow(10, underlyingPrecision))) / FIVA_PRECISION / INDEX_PRECISION;
+        }
+        return (syAmount * BigInt(Math.pow(10, underlyingPrecision))) / FIVA_PRECISION;
+    }
+
+    async convertUnderlyingToSy(assetAmount: bigint): Promise<bigint> {
+        const syMinter = this.getSyMinter();
+        const syIndex = await syMinter.getIndex();
+        const underlyingPrecision = await syMinter.getUnderlyingPrecision();
+
+        if (syIndex > 0) {
+            return (
+                (assetAmount * INDEX_PRECISION * FIVA_PRECISION) / syIndex / BigInt(Math.pow(10, underlyingPrecision))
+            );
+        }
+        return (assetAmount * FIVA_PRECISION) / BigInt(Math.pow(10, underlyingPrecision));
     }
 
     async getMaxTotalSupply(): Promise<{ maxTotalSupply: bigint; totalSupply: bigint }> {
@@ -203,20 +230,27 @@ export class FivaClient {
     async getExpectedSwapAmountOut(fromAsset: FivaAsset, toAsset: FivaAsset, amountIn: bigint): Promise<bigint> {
         await this.setPoolWalletAddresses();
         const pool = await this.getPool();
-        const fromAddr = this.assetToPoolAddress(fromAsset == FivaAsset.Underlying ? FivaAsset.SY : fromAsset);
-        const toAddr = this.assetToPoolAddress(toAsset == FivaAsset.Underlying ? FivaAsset.SY : toAsset);
+        const fromAddr = this.assetToPoolAddress(fromAsset);
+        const toAddr = this.assetToPoolAddress(toAsset);
 
         if (!fromAddr) throw new Error('From asset is not found');
-        if (!toAddr) throw new Error('o asset is not found');
-        if (fromAsset == toAsset) throw new Error('From and to assets are the same');
-        if (fromAsset in [FivaAsset.PT, FivaAsset.YT] && toAsset in [FivaAsset.PT, FivaAsset.YT])
+        if (!toAddr) throw new Error('to asset is not found');
+        if (fromAsset === toAsset) throw new Error('From and to assets are the same');
+        if ([FivaAsset.PT, FivaAsset.YT].includes(fromAsset) && [FivaAsset.PT, FivaAsset.YT].includes(toAsset))
             throw new Error('Swaps between PT and YT assets are not supported');
 
-        return withRetries(pool.getExpectedSwapAmountOut, fromAddr!!, toAddr!!, amountIn);
+        if (fromAsset === FivaAsset.Underlying) amountIn = await this.convertUnderlyingToSy(amountIn);
+
+        const expectedOut = await withRetries(pool.getExpectedSwapAmountOut, fromAddr!!, toAddr!!, amountIn);
+
+        if (toAsset === FivaAsset.Underlying) return this.convertSyToUnderlying(expectedOut);
+        else return expectedOut;
     }
 
-    async getMintYtPtOut(syAmount: bigint): Promise<{ yt_amount: bigint; pt_amount: bigint }> {
+    async getMintYtPtOut(underlyingAmount: bigint): Promise<{ yt_amount: bigint; pt_amount: bigint }> {
         const ytMinter = await this.getYtMinter();
+        const syAmount = await this.convertUnderlyingToSy(underlyingAmount);
+
         return await withRetries(ytMinter.getMintYtPtOut, syAmount);
     }
 
@@ -237,16 +271,58 @@ export class FivaClient {
         return interest;
     }
 
-    async getRedeemSyOutBeforeMaturity(ytAmount: bigint, ptAmount: bigint): Promise<bigint> {
+    async getRedeemAssetOutBeforeMaturity(ytAmount: bigint, ptAmount: bigint): Promise<bigint> {
         const ytMinter = await this.getYtMinter();
         const { sy_amount } = await withRetries(ytMinter.getRedeemSyOutBeforeMaturity, ytAmount, ptAmount);
-        return sy_amount;
+
+        return await this.convertUnderlyingToSy(sy_amount);
     }
 
-    async getRedeemSyOutAfterMaturity(ptAmount: bigint): Promise<bigint> {
+    async getRedeemAssetOutAfterMaturity(ptAmount: bigint): Promise<bigint> {
         const ytMinter = await this.getYtMinter();
         const { sy_amount } = await withRetries(ytMinter.getRedeemSyOutAfterMaturity, ptAmount);
-        return sy_amount;
+
+        return await this.convertUnderlyingToSy(sy_amount);
+    }
+
+    async getMaturityDate(): Promise<Date> {
+        const ytMinter = await this.getYtMinter();
+        const timestamp = await withRetries(ytMinter.getMaturity);
+        return new Date(Number(timestamp) * 1000);
+    }
+
+    async getPtToAssetRatio(assetAmount: bigint, underlyingPrecision: number): Promise<number> {
+        const index = await (await this.getYtMinter()).getIndex();
+        const underlyingAmount =
+            underlyingPrecision === 6 ? assetAmount : (assetAmount * INDEX_PRECISION) / index.index;
+
+        const ptOut = await this.getExpectedSwapAmountOut(FivaAsset.Underlying, FivaAsset.PT, underlyingAmount);
+
+        return (Number(ptOut) * 10 ** underlyingPrecision) / Number(assetAmount) / Number(FIVA_PRECISION);
+    }
+
+    async getFixedAPY(): Promise<number> {
+        const underlyingPrecision = await this.getSyMinter().getUnderlyingPrecision();
+        // One asset (i.e. 1 USDT or 1 TON)
+        const assetAmount = BigInt(1 * 10 ** underlyingPrecision);
+
+        const ptToAssetRatio = await this.getPtToAssetRatio(assetAmount, underlyingPrecision);
+
+        const maturityDate = await this.getMaturityDate();
+        const currentTimeSec = Math.floor(Date.now() / 1000);
+        const maturityTimeSec = Math.floor(maturityDate.getTime() / 1000);
+        const daysToMaturity = Math.floor((maturityTimeSec - currentTimeSec) / (60 * 60 * 24));
+
+        // annualized return in percent
+        return (ptToAssetRatio - 1) * (365 / daysToMaturity) * 100;
+    }
+
+    async getGain(assetAmount: bigint): Promise<number> {
+        const underlyingPrecision = await this.getSyMinter().getUnderlyingPrecision();
+        const ptToAssetRatio = await this.getPtToAssetRatio(assetAmount, underlyingPrecision);
+
+        // gain in percent
+        return (ptToAssetRatio - 1) * 100;
     }
 
     async swapAssetForPt(

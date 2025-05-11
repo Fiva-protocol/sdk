@@ -17,14 +17,11 @@ async function main() {
     const fivaClient = new FivaClient({ connector, tonClient, syAddress: USDT_EVAA_SY });
 
     const queryId = Date.now();
-    const index = await fivaClient.getIndex();
 
     // Mint PT and YT from 1 USDT
     const usdtAmount = 1_000_000n;
-    // NOTE: for non-evaa assets SY amount = underlying amount
-    const syAmount = (usdtAmount * 1000n * INDEX_PRECISION) / index!!;
 
-    const expectedPtYtOut = await fivaClient.getMintYtPtOut(syAmount);
+    const expectedPtYtOut = await fivaClient.getMintYtPtOut(usdtAmount);
     console.log(
         `Expected to get ${Number(expectedPtYtOut.pt_amount) / FIVA_JETTON_PRECISION} PT and YT from minting 1 USDT`,
     );
@@ -32,9 +29,8 @@ async function main() {
     // Send mint request for 1 USDT
     await fivaClient.mintPtAndYt(usdtAmount, queryId);
 
-    const syOut = await fivaClient.getRedeemSyOutBeforeMaturity(toNano(1), toNano(1));
-    const usdtAmoutOut = (syOut * index!!) / 1000n / INDEX_PRECISION;
-    console.log(`Expected to get ${Number(usdtAmoutOut) / USDT_PRECISION} USDT after redeeming 1 PT and 1 YT`);
+    const usdtAmountOut = await fivaClient.getRedeemAssetOutBeforeMaturity(toNano(1), toNano(1));
+    console.log(`Expected to get ${Number(usdtAmountOut) / USDT_PRECISION} USDT after redeeming 1 PT and 1 YT`);
 
     // Send redeem for 1 PT and 1 YT in 2 transactions
     await fivaClient.sendRedeemPT(toNano(1), queryId);

@@ -67,4 +67,18 @@ export class SYJettonMinter implements Contract {
             fwdValue: res.stack.readBigNumber(),
         };
     }
+
+    async getIndex(provider: ContractProvider): Promise<bigint> {
+        try {
+            const res = await provider.get('get_index', []);
+            return res.stack.readBigNumber();
+        } catch (e) {
+            return 0n;
+        }
+    }
+
+    async getUnderlyingPrecision(provider: ContractProvider): Promise<number> {
+        let res = await provider.get('get_underlying_precision', []);
+        return res.stack.readNumber();
+    }
 }

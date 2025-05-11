@@ -18,15 +18,13 @@ async function main() {
 
     const queryId = Date.now();
     const poolBalances = await fivaClient.getPoolBalances();
-    const index = await fivaClient.getIndex();
 
     // Add 1 USD and proportional amount of PT
     const usdtAmount = 1_000_000n;
-    // NOTE: for non-evaa assets SY amount = underlying amount
-    const syAmount = (usdtAmount * 1000n * INDEX_PRECISION) / index!!;
+    const syAmount = await fivaClient.convertUnderlyingToSy(usdtAmount);
     const ptAmount = (syAmount * poolBalances.pt_amount) / poolBalances.sy_amount;
 
-    const expectedLpOut = await fivaClient.getExpectedLpOut(syAmount, ptAmount);
+    const expectedLpOut = await fivaClient.getExpectedLpOut(usdtAmount, ptAmount);
     // Slippage is 1%
     const minLpOut = (expectedLpOut * 99n) / 100n;
     console.log(

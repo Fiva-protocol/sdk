@@ -112,8 +112,8 @@ User can redeem provided liquidity at any moment via the following method:
 
 Like swap methods, liquidity methods also support queryId, amountOut and recipient params.
 
-To get expected amount of LP jettons from provided SY and PT, use:
-- `getExpectedLpOut(syAmount, ptAmount)`
+To get expected amount of LP jettons from provided underlying and PT, use:
+- `getExpectedLpOut(assetAmount, ptAmount)`
 
 
 Example:
@@ -127,15 +127,15 @@ Amount of minted PT and YT depends on the amount of provided underlying asset an
 It's not related to the current FIVA pool state.
 
 The following methods can be used for mint functionality: 
-- `getMintYtPtOut(syAmount)` - get expected amount of PT and YT jettons on mint
+- `getMintYtPtOut(assetAmount)` - get expected amount of PT and YT jettons on mint
 - `mintPtAndYt(assetAmount)` - mint PT and YT jettons from underlying asset
 
 Redeem:
 - `sendRedeemPT(ptAmount)` - start redeem flow, provide PT
 - `sendRedeemYT(ytAmount)` - end redeem flow, provide YT
 - `redeemBatch(ptAmount, ytAmount)` - redeem flow with a single transaction (preferable option)
-- `getRedeemSyOutBeforeMaturity(ytAmount, ptAmount)` - get expected SY out on redeem before maturity
-- `getRedeemSyOutAfterMaturity(ptAmount)` - get expected SY after maturity
+- `getRedeemAssetOutBeforeMaturity(ytAmount, ptAmount)` - get expected asset out on redeem before maturity
+- `getRedeemAssetOutAfterMaturity(ptAmount)` - get expected asset after maturity
 
 Example:
 - https://github.com/Fiva-protocol/sdk/tree/main/examples/mint_and_redeem/index.ts
