@@ -12,7 +12,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@fiva/sdk": "^0.0.14",
+    "@fiva/sdk": "^0.0.15",
     "@ton/ton": "^15.2.1",
     "@tonconnect/ui-react": "^2.1.0",
     "react": "^19.1.0",

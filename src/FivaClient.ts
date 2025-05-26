@@ -125,7 +125,7 @@ export class FivaClient {
     private async setPtMinterAddress() {
         if (!this.contracts.ptMinter) {
             const ytMinter = await this.getYtMinter();
-            const { ptMinterAddress } = await withRetries(ytMinter.getJettonAddresses);
+            const { ptMinterAddress } = await withRetries(ytMinter.getPtAddresses);
             this.contracts.ptMinter = ptMinterAddress;
         }
     }

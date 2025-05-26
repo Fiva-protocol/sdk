@@ -40,16 +40,19 @@ export class YTJettonMinter implements Contract {
         return { index, index_update_timestamp };
     }
 
-    async getJettonAddresses(
-        provider: ContractProvider,
-    ): Promise<{ syWalletAddress: Address; ptMinterAddress: Address; ptWalletAddress: Address }> {
-        const res = await provider.get('get_jetton_addresses', []);
-        const addrCell = res.stack.readCell();
-        const cs = addrCell.beginParse();
+    async getSyAddresses(provider: ContractProvider): Promise<{ syMinterAddress: Address; syWalletAddress: Address }> {
+        const res = await provider.get('get_sy_addresses', []);
         return {
-            syWalletAddress: cs.loadAddress(),
-            ptMinterAddress: cs.loadAddress(),
-            ptWalletAddress: cs.loadAddress(),
+            syMinterAddress: res.stack.readAddress(),
+            syWalletAddress: res.stack.readAddress(),
+        };
+    }
+
+    async getPtAddresses(provider: ContractProvider): Promise<{ ptMinterAddress: Address; ptWalletAddress: Address }> {
+        const res = await provider.get('get_pt_addresses', []);
+        return {
+            ptMinterAddress: res.stack.readAddress(),
+            ptWalletAddress: res.stack.readAddress(),
         };
     }
 
@@ -78,20 +81,17 @@ export class YTJettonMinter implements Contract {
         provider: ContractProvider,
         ytAmount: bigint,
         ptAmount: bigint,
-    ): Promise<{ sy_amount: bigint; max_sy_available: bigint }> {
+    ): Promise<{ sy_amount: bigint }> {
         const res = await provider.get('get_redeem_sy_out_before_maturity', [
             { type: 'int', value: ytAmount },
             { type: 'int', value: ptAmount },
         ]);
-        return { sy_amount: res.stack.readBigNumber(), max_sy_available: res.stack.readBigNumber() };
+        return { sy_amount: res.stack.readBigNumber() };
     }
 
-    async getRedeemSyOutAfterMaturity(
-        provider: ContractProvider,
-        ptAmount: bigint,
-    ): Promise<{ sy_amount: bigint; max_sy_available: bigint }> {
+    async getRedeemSyOutAfterMaturity(provider: ContractProvider, ptAmount: bigint): Promise<{ sy_amount: bigint }> {
         const res = await provider.get('get_redeem_sy_out_after_maturity', [{ type: 'int', value: ptAmount }]);
-        return { sy_amount: res.stack.readBigNumber(), max_sy_available: res.stack.readBigNumber() };
+        return { sy_amount: res.stack.readBigNumber() };
     }
 
     async getClaimableInterest(

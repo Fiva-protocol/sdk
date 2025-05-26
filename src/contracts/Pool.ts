@@ -81,10 +81,7 @@ export class Pool implements Contract {
     }
 
     async getFeesEstimation(provider: ContractProvider, op: number): Promise<{ value: bigint; fwdValue: bigint }> {
-        const res = await provider.get('get_fee_estimation', [
-            { type: 'int', value: BigInt(op) },
-            { type: 'int', value: 0n },
-        ]);
+        const res = await provider.get('get_fee_estimation', [{ type: 'int', value: BigInt(op) }]);
         return {
             value: res.stack.readBigNumber(),
             fwdValue: res.stack.readBigNumber(),
