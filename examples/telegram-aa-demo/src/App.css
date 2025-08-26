@@ -1,0 +1,81 @@
+:root {
+  --bg-color: #ffffff;
+  --text-color: #000000;
+  --hint-color: #999999;
+  --link-color: #007bff;
+  --button-color: #007bff;
+  --button-text-color: #ffffff;
+  
+  --tg-bg-color: var(--bg-color);
+  --tg-text-color: var(--text-color);
+  --tg-hint-color: var(--hint-color);
+  --tg-link-color: var(--link-color);
+  --tg-button-color: var(--button-color);
+  --tg-button-text-color: var(--button-text-color);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--tg-bg-color, var(--bg-color));
+  color: var(--tg-text-color, var(--text-color));
+  min-height: 100vh;
+}
+
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--tg-bg-color, var(--bg-color));
+}
+
+.app > header {
+  margin-bottom: 10px;
+}
+
+.app.loading,
+.app.error {
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 20px;
+}
+
+.loading-spinner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid var(--tg-hint-color, var(--hint-color));
+  border-top: 4px solid var(--tg-link-color, var(--link-color));
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.error-message h2 {
+  color: #dc3545;
+  margin-bottom: 10px;
+}
+
+.error-message p {
+  color: var(--tg-hint-color, var(--hint-color));
+}
