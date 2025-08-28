@@ -40,6 +40,9 @@
     "@tonconnect/sdk": "^3.1.0"
   },
   "dependencies": {
-    "@ton/ton": "^15.0.0"
+    "@ton/ton": "^15.0.0",
+    "@turnkey/sdk-server": "^1.0.0",
+    "@turnkey/api-types": "^1.0.0",
+    "@noble/hashes": "^1.4.0"
   }
 }
